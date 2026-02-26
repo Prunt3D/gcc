@@ -197,6 +197,7 @@ package body Sem_Dim is
       N_Case_Expression           => True,
       N_Expanded_Name             => True,
       N_Explicit_Dereference      => True,
+      N_Expression_With_Actions   => True,
       N_Defining_Identifier       => True,
       N_Function_Call             => True,
       N_Identifier                => True,
@@ -1833,11 +1834,9 @@ package body Sem_Dim is
    ---------------------------------------------
 
    procedure Analyze_Dimension_Component_Declaration (N : Node_Id) is
-      Expr         : constant Node_Id        := Expression (N);
-      Id           : constant Entity_Id      := Defining_Identifier (N);
-      Etyp         : constant Entity_Id      := Etype (Id);
-      Dims_Of_Etyp : constant Dimension_Type := Dimensions_Of (Etyp);
-      Dims_Of_Expr : Dimension_Type;
+      Id           : constant Entity_Id := Defining_Identifier (N);
+      Etyp         : constant Entity_Id := Etype (Id);
+      Dims_Of_Etyp : Dimension_Type     := Dimensions_Of (Etyp);
 
       procedure Error_Dim_Msg_For_Component_Declaration
         (N    : Node_Id;
@@ -1845,6 +1844,8 @@ package body Sem_Dim is
          Expr : Node_Id);
       --  Error using Error_Msg_N at node N. Output the dimensions of the
       --  type Etyp and the expression Expr of N.
+
+      procedure Check_Expression (Expr : Node_Id);
 
       ---------------------------------------------
       -- Error_Dim_Msg_For_Component_Declaration --
@@ -1861,34 +1862,77 @@ package body Sem_Dim is
             & Dimensions_Msg_Of (Expr), Expr);
       end Error_Dim_Msg_For_Component_Declaration;
 
+      ----------------------
+      -- Check_Expression --
+      ----------------------
+
+      procedure Check_Expression (Expr : Node_Id) is
+         Dims_Of_Expr : Dimension_Type;
+      begin
+         if Present (Expr) then
+            Dims_Of_Expr := Dimensions_Of (Expr);
+
+            --  Check dimensions match
+
+            if Dims_Of_Etyp /= Dims_Of_Expr then
+
+               --  Numeric literal case. Issue a warning if the object type is
+               --  not dimensionless to indicate the literal is treated as if
+               --  its dimension matches the type dimension.
+
+               if Nkind (Original_Node (Expr))
+                  in N_Real_Literal | N_Integer_Literal
+               then
+                  Dim_Warning_For_Numeric_Literal (Expr, Etyp);
+
+               --  Issue a dimension mismatch error for all other cases
+
+               else
+                  Error_Dim_Msg_For_Component_Declaration (N, Etyp, Expr);
+               end if;
+            end if;
+         end if;
+      end Check_Expression;
+
    --  Start of processing for Analyze_Dimension_Component_Declaration
 
    begin
-      --  Expression is present
+      --  Deal with itypes coming from record components. This is the same
+      --  thing that is done in Analyze_Dimension_Subtype_Declaration for
+      --  explicit declarations.
 
-      if Present (Expr) then
-         Dims_Of_Expr := Dimensions_Of (Expr);
+      if Is_Itype (Etyp)
+        and then
+          Nkind (Subtype_Indication (Component_Definition (N)))
+          = N_Subtype_Indication
+      then
+         declare
+            Subt_Indic : constant Node_Id :=
+              Subtype_Indication (Component_Definition (N));
+         begin
+            --  Does Dims_Of_Etyp ever exist for itypes???
+            pragma Assert (not Exists (Dims_Of_Etyp));
 
-         --  Check dimensions match
+            Dims_Of_Etyp := Dimensions_Of (Etype (Subtype_Mark (Subt_Indic)));
 
-         if Dims_Of_Etyp /= Dims_Of_Expr then
-
-            --  Numeric literal case. Issue a warning if the object type is not
-            --  dimensionless to indicate the literal is treated as if its
-            --  dimension matches the type dimension.
-
-            if Nkind (Original_Node (Expr)) in
-                 N_Real_Literal | N_Integer_Literal
-            then
-               Dim_Warning_For_Numeric_Literal (Expr, Etyp);
-
-            --  Issue a dimension mismatch error for all other cases
-
-            else
-               Error_Dim_Msg_For_Component_Declaration (N, Etyp, Expr);
+            if Exists (Dims_Of_Etyp) then
+               Set_Dimensions (Etyp, Dims_Of_Etyp);
+               Set_Symbol
+                 (Etyp, Symbol_Of (Etype (Subtype_Mark (Subt_Indic))));
             end if;
-         end if;
+
+            declare
+               Cons : Node_Id := Constraint (Subt_Indic);
+            begin
+               if Nkind (Cons) = N_Range_Constraint then
+                  Check_Expression (Low_Bound (Range_Expression (Cons)));
+                  Check_Expression (High_Bound (Range_Expression (Cons)));
+               end if;
+            end;
+         end;
       end if;
+
+      Check_Expression (Expression (N));
    end Analyze_Dimension_Component_Declaration;
 
    -------------------------------------------------
@@ -2370,6 +2414,62 @@ package body Sem_Dim is
       Dims_Of_Etyp : Dimension_Type;
       Etyp         : Node_Id;
 
+      procedure Error_Dim_Msg_For_Subtype_Declaration
+        (N    : Node_Id;
+         Etyp : Entity_Id;
+         Expr : Node_Id);
+      --  Error using Error_Msg_N at node N. Output the dimensions of the
+      --  type Etyp and the expression Expr of N.
+
+      procedure Check_Expression (Expr : Node_Id);
+
+      -------------------------------------------
+      -- Error_Dim_Msg_For_Subtype_Declaration --
+      -------------------------------------------
+
+      procedure Error_Dim_Msg_For_Subtype_Declaration
+        (N    : Node_Id;
+         Etyp : Entity_Id;
+         Expr : Node_Id) is
+      begin
+         Error_Msg_N ("dimensions mismatch in subtype declaration", N);
+         Error_Msg_N
+           ("\expected dimension " & Dimensions_Msg_Of (Etyp) & ", found "
+            & Dimensions_Msg_Of (Expr), Expr);
+      end Error_Dim_Msg_For_Subtype_Declaration;
+
+      ----------------------
+      -- Check_Expression --
+      ----------------------
+
+      procedure Check_Expression (Expr : Node_Id) is
+         Dims_Of_Expr : Dimension_Type;
+      begin
+         if Present (Expr) then
+            Dims_Of_Expr := Dimensions_Of (Expr);
+
+            --  Check dimensions match
+
+            if Dims_Of_Etyp /= Dims_Of_Expr then
+
+               --  Numeric literal case. Issue a warning if the object type is
+               --  not dimensionless to indicate the literal is treated as if
+               --  its dimension matches the type dimension.
+
+               if Nkind (Original_Node (Expr))
+                  in N_Real_Literal | N_Integer_Literal
+               then
+                  Dim_Warning_For_Numeric_Literal (Expr, Etyp);
+
+               --  Issue a dimension mismatch error for all other cases
+
+               else
+                  Error_Dim_Msg_For_Subtype_Declaration (N, Etyp, Expr);
+               end if;
+            end if;
+         end if;
+      end Check_Expression;
+
    begin
       --  No constraint case in subtype declaration
 
@@ -2401,6 +2501,15 @@ package body Sem_Dim is
             Set_Dimensions (Id, Dims_Of_Etyp);
             Set_Symbol (Id, Symbol_Of (Etyp));
          end if;
+
+         declare
+            Cons : Node_Id := Constraint (Subtype_Indication (N));
+         begin
+            if Nkind (Cons) = N_Range_Constraint then
+               Check_Expression (Low_Bound (Range_Expression (Cons)));
+               Check_Expression (High_Bound (Range_Expression (Cons)));
+            end if;
+         end;
       end if;
    end Analyze_Dimension_Subtype_Declaration;
 
