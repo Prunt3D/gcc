@@ -89,6 +89,8 @@ package body System.Perfect_Hash_Generators is
    --  assign values to all the vertices. It cannot assign a value to an
    --  already assigned vertex as G is acyclic.
 
+   pragma Unsuppress (All_Checks);
+
    subtype Word_Id   is Integer;
    subtype Key_Id    is Integer;
    subtype Vertex_Id is Integer;
@@ -640,6 +642,8 @@ package body System.Perfect_Hash_Generators is
    -------------
 
    procedure Compute (Position : String) is
+      subtype One_Based_String is String (1 .. Position'Length);
+
       Success : Boolean := False;
 
    begin
@@ -652,7 +656,7 @@ package body System.Perfect_Hash_Generators is
       end if;
 
       if Position'Length /= 0 then
-         Parse_Position_Selection (Position);
+         Parse_Position_Selection (One_Based_String (Position));
       else
          Select_Char_Position;
       end if;
@@ -1275,8 +1279,9 @@ package body System.Perfect_Hash_Generators is
    --------------
 
    function New_Word (S : String) return Word_Type is
+      subtype One_Based_String is String (1 .. S'Length);
    begin
-      return new String'(S);
+      return new String'(One_Based_String (S));
    end New_Word;
 
    ------------------------------
