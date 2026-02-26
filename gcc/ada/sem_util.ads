@@ -1215,7 +1215,7 @@ package Sem_Util is
    --  Return the full expanded name of the library unit declared by Decl_Node
 
    function Get_Max_Queue_Length (Id : Entity_Id) return Uint;
-   --  Return the argument of pragma Max_Queue_Length or zero if the annotation
+   --  Return the argument of pragma Max_Queue_Length or -1 if the annotation
    --  is not present. It is assumed that Id denotes an entry.
 
    function Get_Name_Entity_Id (Id : Name_Id) return Entity_Id;

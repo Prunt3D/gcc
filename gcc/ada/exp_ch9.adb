@@ -9447,7 +9447,7 @@ package body Exp_Ch9 is
             end loop;
 
             --  Gather the Max_Queue_Length values of all entries in a list. A
-            --  value of zero indicates that the entry has no limitation on its
+            --  value of -1 indicates that the entry has no limitation on its
             --  queue length.
 
             if Need_Array then
@@ -13983,7 +13983,7 @@ package body Exp_Ch9 is
 
             --  Entry_Queue_Maxes parameter. This is an access to an array of
             --  naturals representing the entry queue maximums for each entry
-            --  in the protected type. Zero represents no max. The access is
+            --  in the protected type. -1 represents no max. The access is
             --  null if there is no limit for all entries (usual case).
 
             if Has_Entry

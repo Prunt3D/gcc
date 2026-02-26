@@ -227,10 +227,10 @@ package System.Rident is
       --  the compiler cannot distinguish between different non-zero values.
 
       Max_Asynchronous_Select_Nesting,           -- (RM D.7(18), H.4(3))
-      Max_Entry_Queue_Length,                    -- Ada 2012 (RM D.7 (19.1/2))
 
       --  The remaining entries are not checked at compile/bind time
 
+      Max_Entry_Queue_Length,                    -- Ada 2012 (RM D.7 (19.1/2))
       Max_Storage_At_Blocking,                   -- (RM D.7(17))
 
       Not_A_Restriction_Id);
@@ -278,7 +278,7 @@ package System.Rident is
 
    subtype Checked_Parameter_Restrictions is
      All_Parameter_Restrictions range
-       Max_Protected_Entries .. Max_Entry_Queue_Length;
+       Max_Protected_Entries .. Max_Asynchronous_Select_Nesting;
    --  These are the parameter restrictions that can be at least partially
    --  checked at compile/binder time. Minimally, the compiler can detect
    --  violations of a restriction pragma with a value of zero reliably.
@@ -305,14 +305,14 @@ package System.Rident is
 
    subtype Checked_Zero_Parameter_Restrictions is
      Checked_Parameter_Restrictions range
-       Max_Asynchronous_Select_Nesting .. Max_Entry_Queue_Length;
+       Max_Asynchronous_Select_Nesting .. Max_Asynchronous_Select_Nesting;
    --  Restrictions with parameters where the compiler can detect the use of
    --  the feature, and hence violations of a restriction specifying a value
    --  of zero, but cannot detect specific values other than zero/nonzero.
 
    subtype Unchecked_Parameter_Restrictions is
      All_Parameter_Restrictions range
-       Max_Storage_At_Blocking .. Max_Storage_At_Blocking;
+       Max_Entry_Queue_Length .. Max_Storage_At_Blocking;
    --  Restrictions with parameters where the compiler cannot ever detect
    --  corresponding compile time usage, so the binder and compiler never
    --  detect violations of any restriction.

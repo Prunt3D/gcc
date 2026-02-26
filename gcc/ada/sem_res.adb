@@ -8519,14 +8519,6 @@ package body Sem_Res is
          Was_Over := Is_Overloaded (Selector_Name (Prefix (Entry_Name)));
       end if;
 
-      --  We cannot in general check the maximum depth of protected entry calls
-      --  at compile time. But we can tell that any protected entry call at all
-      --  violates a specified nesting depth of zero.
-
-      if Is_Protected_Type (Scope (Nam)) then
-         Check_Restriction (Max_Entry_Queue_Length, N);
-      end if;
-
       --  Use context type to disambiguate a protected function that can be
       --  called without actuals and that returns an array type, and where the
       --  argument list may be an indexing of the returned value.

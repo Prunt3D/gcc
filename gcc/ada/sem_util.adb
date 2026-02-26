@@ -10733,9 +10733,8 @@ package body Sem_Util is
       Max   : Uint;
 
    begin
-      --  A value of 0 or -1 represents no maximum specified, and entries and
-      --  entry families with no Max_Queue_Length aspect or pragma default to
-      --  it.
+      --  A value of -1 represents no maximum specified, and entries and entry
+      --  families with no Max_Queue_Length aspect or pragma default to it.
 
       --  We have already checked that there is at most one of these pragmas
 
@@ -10746,14 +10745,7 @@ package body Sem_Util is
          Max := Expr_Value
             (Expression (First (Pragma_Argument_Associations (PMEQL))));
       else
-         Max := Uint_0;
-      end if;
-
-      --  Since -1 and 0 are equivalent, return 0 for instances of -1 for
-      --  uniformity.
-
-      if Max = -1 then
-         Max := Uint_0;
+         Max := Uint_Minus_1;
       end if;
 
       return Max;
