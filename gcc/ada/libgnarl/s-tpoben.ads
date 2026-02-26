@@ -70,8 +70,11 @@ package System.Tasking.Protected_Objects.Entries is
    type Protected_Entry_Queue_Array is
      array (Protected_Entry_Index range <>) of Entry_Queue;
 
+   subtype Protected_Entry_Queue_Max is Integer range -1 .. Integer'Last;
+
    type Protected_Entry_Queue_Max_Array is
-     array (Positive_Protected_Entry_Index range <>) of Natural;
+     array (Positive_Protected_Entry_Index range <>) of
+     Protected_Entry_Queue_Max;
 
    type Protected_Entry_Queue_Max_Access is
      access constant Protected_Entry_Queue_Max_Array;
@@ -145,7 +148,7 @@ package System.Tasking.Protected_Objects.Entries is
 
       Entry_Queue_Maxes : Protected_Entry_Queue_Max_Access;
       --  Access to an array of naturals representing the max value for each
-      --  entry's queue length. A value of 0 signifies no max.
+      --  entry's queue length. A value of -1 signifies no max.
 
       Entry_Queues : Protected_Entry_Queue_Array (1 .. Num_Entries);
       --  Action and barrier subprograms for the protected type.

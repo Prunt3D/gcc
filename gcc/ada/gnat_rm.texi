@@ -6833,7 +6833,7 @@ plus the following set of restrictions:
 @item 
 @code{Max_Entry_Queue_Length => 1}
 
-No task can be queued on a protected entry.
+Only a single task can be queued on a given protected entry at a given time.
 
 @item 
 @code{Max_Protected_Entries => 1}
