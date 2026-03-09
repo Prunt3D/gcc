@@ -25,6 +25,7 @@
 
 with Einfo;          use Einfo;
 with Einfo.Entities; use Einfo.Entities;
+with Exp_Util;       use Exp_Util;
 with Nlists;         use Nlists;
 with Nmake;          use Nmake;
 with Rtsfind;        use Rtsfind;
@@ -69,7 +70,8 @@ package body Exp_Sel is
       return Make_Implicit_Exception_Handler (Loc,
         Exception_Choices =>
           New_List (New_Occurrence_Of (Stand.Abort_Signal, Loc)),
-        Statements        => New_List (Make_Null_Statement (Loc)));
+        Statements        => New_List (
+          Build_Runtime_Call (Loc, RE_Maybe_Reraise_Abort)));
    end Build_Abort_Block_Handler;
 
    -------------

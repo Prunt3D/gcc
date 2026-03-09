@@ -936,6 +936,19 @@ package body System.Tasking.Stages is
       end if;
    end Free_Task;
 
+   -------------------------
+   -- Maybe_Reraise_Abort --
+   -------------------------
+
+   procedure Maybe_Reraise_Abort is
+      Self_Id : constant Task_Id := STPO.Self;
+   begin
+      if Self_Id.Pending_ATC_Level < Self_Id.ATC_Nesting_Level then
+         Debug.Trace (Self_Id, "Maybe_Reraise_Abort triggered", ' ');
+         raise Standard'Abort_Signal;
+      end if;
+   end Maybe_Reraise_Abort;
+
    ---------------------------
    -- Move_Activation_Chain --
    ---------------------------

@@ -281,6 +281,10 @@ package System.Tasking.Stages is
    --  if T has terminated. Do nothing in the other case. It is called from
    --  Unchecked_Deallocation, for objects that are or contain tasks.
 
+   procedure Maybe_Reraise_Abort;
+   --  Check if the ATC_Nesting_Level for this task is deeper than the
+   --  Pending_ATC_Level. If so, then reraise the abort exception.
+
    procedure Move_Activation_Chain
      (From, To   : Activation_Chain_Access;
       New_Master : Master_ID);

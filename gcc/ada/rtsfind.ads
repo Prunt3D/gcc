@@ -2183,6 +2183,7 @@ package Rtsfind is
      RE_Complete_Task,                   -- System.Tasking.Stages
      RE_Free_Task,                       -- System.Tasking.Stages
      RE_Expunge_Unactivated_Tasks,       -- System.Tasking.Stages
+     RE_Maybe_Reraise_Abort,             -- System.Tasking.Stages
      RE_Move_Activation_Chain,           -- System.Tasking_Stages
      RE_Terminated);                     -- System.Tasking.Stages
 
@@ -3881,6 +3882,7 @@ package Rtsfind is
      RE_Complete_Task                    => System_Tasking_Stages,
      RE_Free_Task                        => System_Tasking_Stages,
      RE_Expunge_Unactivated_Tasks        => System_Tasking_Stages,
+     RE_Maybe_Reraise_Abort              => System_Tasking_Stages,
      RE_Move_Activation_Chain            => System_Tasking_Stages,
      RE_Terminated                       => System_Tasking_Stages);
 
