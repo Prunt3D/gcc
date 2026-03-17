@@ -238,26 +238,27 @@ package body Lib.Util is
    ---------------------
 
    procedure Write_Info_Slit (S : String_Id) is
-      C : Character;
+      C : Char_Code;
 
    begin
       Write_Info_Str ("""");
 
       for J in 1 .. String_Length (S) loop
-         C := Get_Character (Get_String_Char (S, J));
+         C := Get_String_Char (S, J);
 
-         if C in Character'Val (16#20#) .. Character'Val (16#7E#)
-           and then C /= '{'
-         then
-            Write_Info_Char (C);
+         if C in 16#20# .. 16#7E# and then Character'Val (C) /= '{' then
+            Write_Info_Char (Character'Val (C));
 
-            if C = '"' then
-               Write_Info_Char (C);
+            if Character'Val (C) = '"' then
+               Write_Info_Char (Character'Val (C));
             end if;
 
          else
             Write_Info_Char ('{');
-            Write_Info_Hex_Byte (Character'Pos (C));
+            if C > 16#FF# then
+               Write_Info_Hex_Byte (Natural (C / 256));
+            end if;
+            Write_Info_Hex_Byte (Natural (C mod 256));
             Write_Info_Char ('}');
          end if;
       end loop;
