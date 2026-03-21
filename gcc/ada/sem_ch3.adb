@@ -6571,6 +6571,7 @@ package body Sem_Ch3 is
       if Present (Component_Typ) then
          Element_Type := Process_Subtype (Component_Typ, P, Related_Id, 'C');
          Set_Etype (Component_Typ, Element_Type);
+         Analyze_Dimension (Component_Typ);
 
       --  Ada 2005 (AI-230): Access Definition case
 
