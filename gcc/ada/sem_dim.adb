@@ -291,6 +291,8 @@ package body Sem_Dim is
    --  both the identifier and the parent type of N are not dimensionless,
    --  return an error.
 
+   procedure Analyze_Dimension_Subtype_Indication (N : Node_Id);
+
    procedure Analyze_Dimension_Type_Conversion (N : Node_Id);
    --  Type conversions handle conversions between literals and dimensioned
    --  types, from dimensioned types to their base type, and between different
@@ -1212,6 +1214,9 @@ package body Sem_Dim is
          when N_Subtype_Declaration =>
             Analyze_Dimension_Subtype_Declaration (N);
 
+         when N_Subtype_Indication =>
+            Analyze_Dimension_Subtype_Indication (N);
+
          when  N_Type_Conversion =>
             Analyze_Dimension_Type_Conversion (N);
 
@@ -1232,7 +1237,7 @@ package body Sem_Dim is
       Comp_Typ : Entity_Id)
    is
       Comp_Ass         : constant List_Id        := Component_Associations (N);
-      Dims_Of_Comp_Typ : constant Dimension_Type := Dimensions_Of (Comp_Typ);
+      Dims_Of_Comp_Typ : Dimension_Type          := Dimensions_Of (Comp_Typ);
       Exps             : constant List_Id        := Expressions (N);
 
       Comp         : Node_Id;
@@ -1255,9 +1260,21 @@ package body Sem_Dim is
       if Ada_Version < Ada_2012
         or else In_Inlined_Body
         or else not Comes_From_Source (Original_Node (N))
+        or else No (Comp_Typ)
         or else not Has_Dimension_System (Base_Type (Comp_Typ))
       then
          return;
+      end if;
+
+      if not Exists (Dims_Of_Comp_Typ)
+        and then Present (Etype (Comp_Typ))
+      then
+         Dims_Of_Comp_Typ := Dimensions_Of (Etype (Comp_Typ));
+
+         if Exists (Dims_Of_Comp_Typ) then
+            Set_Dimensions (Comp_Typ, Dims_Of_Comp_Typ);
+            Set_Symbol (Comp_Typ, Symbol_Of (Etype (Comp_Typ)));
+         end if;
       end if;
 
       --  Check whether there is any positional component association
@@ -2512,6 +2529,35 @@ package body Sem_Dim is
          end;
       end if;
    end Analyze_Dimension_Subtype_Declaration;
+
+   ------------------------------------------
+   -- Analyze_Dimension_Subtype_Indication --
+   ------------------------------------------
+
+   procedure Analyze_Dimension_Subtype_Indication (N : Node_Id) is
+      Etyp         : constant Entity_Id := Etype (N);
+      Dims_Of_Etyp : Dimension_Type;
+   begin
+      if No (Etyp)
+        or else Nkind (Parent (N)) /= N_Component_Definition
+        or else Nkind (Parent (Parent (N))) not in N_Array_Type_Definition
+      then
+         return;
+      end if;
+
+      Dims_Of_Etyp := Dimensions_Of (Etyp);
+
+      if Is_Itype (Etyp) then
+         pragma Assert (not Exists (Dims_Of_Etyp));
+
+         Dims_Of_Etyp := Dimensions_Of (Etype (Subtype_Mark (N)));
+
+         if Exists (Dims_Of_Etyp) then
+            Set_Dimensions (Etyp, Dims_Of_Etyp);
+            Set_Symbol (Etyp, Symbol_Of (Etype (Subtype_Mark (N))));
+         end if;
+      end if;
+   end Analyze_Dimension_Subtype_Indication;
 
    ---------------------------------------
    -- Analyze_Dimension_Type_Conversion --

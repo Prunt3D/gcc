@@ -6703,6 +6703,7 @@ package body Sem_Ch3 is
               'C',
               Excludes_Null => Null_Exclusion_Present (Component_Def));
          Set_Etype (Component_Typ, Element_Type);
+         Analyze_Dimension (Component_Typ);
 
       --  Ada 2005 (AI-230): Access Definition case
 
