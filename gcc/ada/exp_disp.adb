@@ -89,10 +89,11 @@ package body Exp_Disp is
    --  generate additional subprograms (thunks) associated with each primitive
    --  Prim to have a layout compatible with the C++ ABI. The thunk displaces
    --  the pointers to the actuals that depend on the controlling type before
-   --  transferring control to the target subprogram. If there is no need to
-   --  generate the thunk, then Thunk_Id is set to Empty. Otherwise Thunk_Id
-   --  is set to the defining identifier of the thunk and Thunk_Code to the
-   --  code generated for the thunk respectively.
+   --  transferring control to the target subprogram. Thunk_Id is set to the
+   --  defining identifier of the thunk and Thunk_Code to its generated code.
+   --  If the target is a null procedure of Iface, Thunk_Id is set to the
+   --  target itself and no code is generated. If the primitive is eliminated
+   --  or has no formals, Thunk_Id is set to Empty.
 
    procedure Expand_Secondary_Stack_Thunk
      (Prim       : Entity_Id;
@@ -1830,6 +1831,18 @@ package body Exp_Disp is
          pragma Assert (Ekind (Target) = E_Function
            and then Has_Controlling_Result (Target));
 
+         return;
+
+      --  An inherited null procedure can already have the profile required
+      --  by this interface's dispatch table. In that case use it directly:
+      --  no displacement of the controlling actuals is needed. This also
+      --  avoids generating a zero-offset thunk that the back end turns into
+      --  an alias, which is not supported for nested subprograms.
+
+      elsif Is_Null_Interface_Primitive (Target)
+        and then Find_Dispatching_Type (Target) = Iface
+      then
+         Thunk_Id := Target;
          return;
       end if;
 
