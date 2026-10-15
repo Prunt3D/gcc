@@ -5236,7 +5236,7 @@ The set of configuration pragmas is defined in the following sections.
 
   * ``Max_Entry_Queue_Length => 1``
 
-    Only a single task can be queued on a given protected entry at a given time.
+    No task can be queued on a protected entry.
 
   * ``Max_Protected_Entries => 1``
 
