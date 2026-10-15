@@ -2988,7 +2988,7 @@ package body Sem_Dim is
    --  For dimensioned operand in exponentiation, exponent is allowed to be a
    --  Rational and not only an Integer like for dimensionless operands. For
    --  that particular case, the left operand is rewritten as a function call
-   --  using the function Expon_LLF from s-llflex.ads.
+   --  using the matching precision function from s-llflex.ads.
 
    procedure Eval_Op_Expon_With_Rational_Exponent
      (N              : Node_Id;
@@ -2999,9 +2999,12 @@ package body Sem_Dim is
       L                     : constant Node_Id        := Left_Opnd (N);
       Etyp_Of_L             : constant Entity_Id      := Etype (L);
       Btyp_Of_L             : constant Entity_Id      := Base_Type (Etyp_Of_L);
+      Rtyp_Of_L             : constant Entity_Id      := Root_Type (Etyp_Of_L);
       Actual_1              : Node_Id;
       Actual_2              : Node_Id;
       Dim_Power             : Rational;
+      Expon_RTE             : RE_Id;
+      Expon_Type            : Entity_Id;
       List_Of_Dims          : List_Id;
       New_Aspect            : Node_Id;
       New_Aspects           : List_Id;
@@ -3088,26 +3091,44 @@ package body Sem_Dim is
          New_Id := Btyp_Of_L;
       end if;
 
+      --  Use the operand's floating-point precision, as for integer
+      --  exponentiation. Keep the widest type for fixed-point operands.
+
+      if Rtyp_Of_L = Standard_Short_Float
+        or else Rtyp_Of_L = Standard_Float
+      then
+         Expon_Type := Standard_Float;
+         Expon_RTE  := RE_Expon_F;
+
+      elsif Rtyp_Of_L = Standard_Long_Float then
+         Expon_Type := Standard_Long_Float;
+         Expon_RTE  := RE_Expon_LF;
+
+      else
+         Expon_Type := Standard_Long_Long_Float;
+         Expon_RTE  := RE_Expon_LLF;
+      end if;
+
       --  Replacement of N by New_N
 
       --  Generate:
 
-      --  Actual_1 := Long_Long_Float (L),
+      --  Actual_1 := Expon_Type (L),
 
-      --  Actual_2 := Long_Long_Float (Exponent_Value.Numerator) /
-      --                Long_Long_Float (Exponent_Value.Denominator);
+      --  Actual_2 := Expon_Type (Exponent_Value.Numerator) /
+      --                Expon_Type (Exponent_Value.Denominator);
 
-      --  (T (Expon_LLF (Actual_1, Actual_2)));
+      --  (T (Expon (Actual_1, Actual_2)));
 
       --  where T is the subtype declared in step 1
 
       --  The node is rewritten as a type conversion
 
-      --  Step 1: Creation of the two parameters of Expon_LLF function call
+      --  Step 1: Creation of the two parameters of the exponentiation call
 
       Actual_1 :=
         Make_Type_Conversion (Loc,
-          Subtype_Mark => New_Occurrence_Of (Standard_Long_Long_Float, Loc),
+          Subtype_Mark => New_Occurrence_Of (Expon_Type, Loc),
           Expression   => Relocate_Node (L));
 
       Actual_2 :=
@@ -3126,7 +3147,7 @@ package body Sem_Dim is
            Subtype_Mark => New_Occurrence_Of (New_Id, Loc),
            Expression   =>
              Make_Function_Call (Loc,
-               Name => New_Occurrence_Of (RTE (RE_Expon_LLF), Loc),
+               Name => New_Occurrence_Of (RTE (Expon_RTE), Loc),
                Parameter_Associations => New_List (
                  Actual_1, Actual_2)));
 

@@ -29,12 +29,20 @@
 --                                                                          --
 ------------------------------------------------------------------------------
 
---  This package contains an instantiation of the exponentiation operator
---  between two long long floats.
+--  This package provides the floating-point exponentiation operators used
+--  for dimensioned types with rational exponents.
 
+with Ada.Numerics.Elementary_Functions;
+with Ada.Numerics.Long_Elementary_Functions;
 with Ada.Numerics.Long_Long_Elementary_Functions;
 
 package System.Long_Long_Float_Expon is
+
+   function Expon_F (Left, Right : Float) return Float
+     renames Ada.Numerics.Elementary_Functions."**";
+
+   function Expon_LF (Left, Right : Long_Float) return Long_Float
+     renames Ada.Numerics.Long_Elementary_Functions."**";
 
    function Expon_LLF (Left, Right : Long_Long_Float) return Long_Long_Float
      renames Ada.Numerics.Long_Long_Elementary_Functions."**";

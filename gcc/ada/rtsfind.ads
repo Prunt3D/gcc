@@ -1018,6 +1018,8 @@ package Rtsfind is
      RE_Static_Interrupt_Protection,     -- System.Interrupts
      RE_System_Interrupt_Id,             -- System.Interrupts
 
+     RE_Expon_F,                         -- System.Long_Long_Float_Expon
+     RE_Expon_LF,                        -- System.Long_Long_Float_Expon
      RE_Expon_LLF,                       -- System.Long_Long_Float_Expon
 
      RE_Asm_Insn,                        -- System.Machine_Code
@@ -2687,6 +2689,8 @@ package Rtsfind is
      RE_Static_Interrupt_Protection      => System_Interrupts,
      RE_System_Interrupt_Id              => System_Interrupts,
 
+     RE_Expon_F                          => System_Long_Long_Float_Expon,
+     RE_Expon_LF                         => System_Long_Long_Float_Expon,
      RE_Expon_LLF                        => System_Long_Long_Float_Expon,
 
      RE_Asm_Insn                         => System_Machine_Code,
