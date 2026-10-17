@@ -153,8 +153,82 @@ package body System.Fat_Gen is
    --  the sign of the exponent. The absolute value of Frac is in the range
    --  0.0 <= Frac < 1.0. If Frac = 0.0 or -0.0, then Expo is always zero.
 
+   procedure Decompose_Fallback (XX : T; Frac : out T; Expo : out UI);
+   pragma No_Inline (Decompose_Fallback);
+   --  Keep the slow attribute paths out of line without preventing Decompose
+   --  from being inlined elsewhere.
+
    function Finite_Succ (X : T) return T;
    --  Return the successor of X, a finite number not equal to T'Last
+
+   function Word_Exponent (X : T) return UI;
+   function Word_Fraction (X : T) return T;
+   pragma Inline_Always (Word_Exponent);
+   pragma Inline_Always (Word_Fraction);
+   --  Fast paths for formats without a matching scalar integer representation
+
+   generic
+      type Bits is mod <>;
+   package Scalar_Attributes is
+      function Exponent (X : T) return UI;
+      function Fraction (X : T) return T;
+      pragma Inline_Always (Exponent);
+      pragma Inline_Always (Fraction);
+   end Scalar_Attributes;
+   --  Operate on the complete representation so the compiler need not
+   --  extract and reinsert its most significant 16-bit word. Each instance
+   --  is used only when Bits and T have the same size, without padding.
+
+   package body Scalar_Attributes is
+      pragma Warnings
+        (Off, "types for unchecked conversion have different sizes");
+      function To_Bits is new Ada.Unchecked_Conversion (T, Bits);
+      function From_Bits is new Ada.Unchecked_Conversion (Bits, T);
+      pragma Warnings
+        (On, "types for unchecked conversion have different sizes");
+      --  Instances with nonmatching sizes are discarded by the static
+      --  conditions in the public wrappers below.
+
+      Factor : constant Bits := Bits (Exp_Factor) * 2**(Bits'Size - Siz);
+      Mask   : constant Bits := Bits (Exp_Mask) * 2**(Bits'Size - Siz);
+      Last   : constant Bits := Bits (IEEE_Emax - IEEE_Emin + 1);
+
+      function Exponent (X : T) return UI is
+         Biased : constant Bits := (To_Bits (T'Machine (X)) and Mask) / Factor;
+         X_Frac : T;
+         X_Exp  : UI;
+      begin
+         if Biased in 1 .. Last then
+            return Integer (Biased) - IEEE_Ebias + 1;
+         else
+            Decompose_Fallback (X, X_Frac, X_Exp);
+            return X_Exp;
+         end if;
+      end Exponent;
+
+      function Fraction (X : T) return T is
+         Rep    : constant Bits := To_Bits (T'Machine (X));
+         Biased : constant Bits := (Rep and Mask) / Factor;
+         X_Frac : T;
+         X_Exp  : UI;
+      begin
+         if Biased in 1 .. Last then
+            return From_Bits
+              ((Rep and not Mask) or Bits (IEEE_Ebias - 1) * Factor);
+         else
+            Decompose_Fallback (X, X_Frac, X_Exp);
+            return X_Frac;
+         end if;
+      end Fraction;
+   end Scalar_Attributes;
+
+   type Bits_32 is mod 2**32;
+   type Bits_64 is mod 2**64;
+
+   package Scalar_32 is new Scalar_Attributes (Bits_32);
+   package Scalar_64 is new Scalar_Attributes (Bits_64);
+   package Scalar_Wide is new
+     Scalar_Attributes (System.Unsigned_Types.Long_Long_Long_Unsigned);
 
    --------------
    -- Adjacent --
@@ -277,17 +351,28 @@ package body System.Fat_Gen is
       end if;
    end Decompose;
 
+   ------------------------
+   -- Decompose_Fallback --
+   ------------------------
+
+   procedure Decompose_Fallback (XX : T; Frac : out T; Expo : out UI) is
+   begin
+      Decompose (XX, Frac, Expo);
+   end Decompose_Fallback;
+
    --------------
    -- Exponent --
    --------------
 
    function Exponent (X : T) return UI is
-      X_Frac : T;
-      X_Exp  : UI;
-   begin
-      Decompose (X, X_Frac, X_Exp);
-      return X_Exp;
-   end Exponent;
+     (if T'Size = 32 and then T'Size = (Rep_Last + 1) * Siz
+      then Scalar_32.Exponent (X)
+      elsif T'Size = 64 and then T'Size = (Rep_Last + 1) * Siz
+      then Scalar_64.Exponent (X)
+      elsif T'Size = System.Unsigned_Types.Long_Long_Long_Unsigned'Size
+        and then T'Size = (Rep_Last + 1) * Siz
+      then Scalar_Wide.Exponent (X)
+      else Word_Exponent (X));
 
    -----------------
    -- Finite_Succ --
@@ -483,12 +568,14 @@ package body System.Fat_Gen is
    --------------
 
    function Fraction (X : T) return T is
-      X_Frac : T;
-      X_Exp  : UI;
-   begin
-      Decompose (X, X_Frac, X_Exp);
-      return X_Frac;
-   end Fraction;
+     (if T'Size = 32 and then T'Size = (Rep_Last + 1) * Siz
+      then Scalar_32.Fraction (X)
+      elsif T'Size = 64 and then T'Size = (Rep_Last + 1) * Siz
+      then Scalar_64.Fraction (X)
+      elsif T'Size = System.Unsigned_Types.Long_Long_Long_Unsigned'Size
+        and then T'Size = (Rep_Last + 1) * Siz
+      then Scalar_Wide.Fraction (X)
+      else Word_Fraction (X));
 
    ------------------
    -- Leading_Part --
@@ -985,5 +1072,60 @@ package body System.Fat_Gen is
          end if;
       end if;
    end Valid;
+
+   -------------------
+   -- Word_Exponent --
+   -------------------
+
+   function Word_Exponent (X : T) return UI is
+      XX : constant T := T'Machine (X);
+
+      Rep : Float_Rep;
+      for Rep'Address use XX'Address;
+
+      Exp : constant Float_Word := Rep (MSW) and Exp_Mask;
+
+      X_Frac : T;
+      X_Exp  : UI;
+   begin
+      --  Extract the exponent directly for normal finite numbers. Leave
+      --  zeros, denormalized numbers, infinities and NaNs to Decompose.
+
+      if Exp in Exp_Factor .. Exp_Mask - Exp_Factor then
+         return Integer (Exp / Exp_Factor) - IEEE_Ebias + 1;
+      else
+         Decompose_Fallback (XX, X_Frac, X_Exp);
+         return X_Exp;
+      end if;
+   end Word_Exponent;
+
+   -------------------
+   -- Word_Fraction --
+   -------------------
+
+   function Word_Fraction (X : T) return T is
+      XX : T := T'Machine (X);
+
+      Rep : Float_Rep;
+      for Rep'Address use XX'Address;
+
+      Exp : constant Float_Word := Rep (MSW) and Exp_Mask;
+
+      X_Frac : T;
+      X_Exp  : UI;
+   begin
+      --  For normal finite numbers, set the Ada exponent to zero while
+      --  preserving the sign and significand. Decompose handles all other
+      --  cases, including the sign of zero and normalization of denormals.
+
+      if Exp in Exp_Factor .. Exp_Mask - Exp_Factor then
+         Rep (MSW) := (Rep (MSW) and not Exp_Mask) or
+                        Float_Word (IEEE_Ebias - 1) * Exp_Factor;
+         return XX;
+      else
+         Decompose_Fallback (XX, X_Frac, X_Exp);
+         return X_Frac;
+      end if;
+   end Word_Fraction;
 
 end System.Fat_Gen;
