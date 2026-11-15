@@ -1622,9 +1622,14 @@ package body Repinfo is
                      raise Incomplete_Layout;
                   end if;
 
+                  --  A private parent may have no full view: it is a generic
+                  --  formal type when the extension is declared in a generic.
+
                   if Is_Private_Type (Parent_Type) then
                      Parent_Type := Full_View (Parent_Type);
-                     pragma Assert (Present (Parent_Type));
+                     if No (Parent_Type) then
+                        raise Incomplete_Layout;
+                     end if;
                   end if;
 
                   --  Do not list variants if one of them has been selected
@@ -1637,7 +1642,9 @@ package body Repinfo is
 
                      if Is_Private_Type (Parent_Type) then
                         Parent_Type := Full_View (Parent_Type);
-                        pragma Assert (Present (Parent_Type));
+                        if No (Parent_Type) then
+                           raise Incomplete_Layout;
+                        end if;
                      end if;
 
                      if not In_Extended_Main_Source_Unit (Parent_Type) then
