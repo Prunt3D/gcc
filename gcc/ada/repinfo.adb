@@ -520,6 +520,14 @@ package body Repinfo is
 
          E := First_Entity (Ent);
          while Present (E) loop
+            --  As for Ent above, we do not list an ignored ghost entity, for
+            --  which information may have been deleted. An ignored ghost type
+            --  is not laid out when one of its components comes from ignored
+            --  ghost code, so it has no size or alignment to list.
+
+            if Sem_Util.Is_Ignored_Ghost_Entity_In_Codegen (E) then
+               null;
+
             --  We list entities that come from source (except for incomplete,
             --  private and generic types, as well as deferred constants, for
             --  which we list the information for the full view). If requested
@@ -528,7 +536,7 @@ package body Repinfo is
             --  source. If debug switch -gnatdA is specified, then all entities
             --  are listed.
 
-            if ((Comes_From_Source (E)
+            elsif ((Comes_From_Source (E)
                    or else (Ekind (E) = E_Block
                               and then
                             Nkind (Parent (E)) = N_Implicit_Label_Declaration
